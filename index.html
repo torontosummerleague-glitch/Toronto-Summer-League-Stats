@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riverdale League Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#14202e;--panel:#1c2b3e;--line:#2b3d54;--text:#eef2f7;--mute:#97a6ba;--hot:#ff6b2c;
+--c-south:#3dbb74;--c-east:#e5484d;--c-west:#f2b632;--c-north:#8b7cf6;--c-sub:#97a6ba;
+--head:"Barlow Condensed","Arial Narrow",Impact,sans-serif;--body:Barlow,system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.5 var(--body);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 48px}
+header{padding:36px 0 20px;border-bottom:4px solid var(--hot)}
+h1{font:700 clamp(2.4rem,7vw,4.2rem)/.95 var(--head);margin:0;letter-spacing:.01em}
+header p{margin:8px 0 0;color:var(--mute)}
+h2{font:700 1.6rem/1.1 var(--head);margin:36px 0 14px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 0}
+.tabs button{font:600 1.05rem var(--head);letter-spacing:.03em;background:var(--panel);color:var(--text);border:1px solid var(--line);padding:8px 16px;border-radius:999px;cursor:pointer}
+.tabs button[aria-pressed=true]{background:var(--hot);border-color:var(--hot);color:#1a0d05}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:0 0 14px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--mute)}
+select,input[type=search]{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font:inherit;min-width:150px}
+.leaders{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card h3{font:700 1.15rem var(--head);letter-spacing:.04em;margin:0 0 8px;color:var(--mute)}
+.top{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.big{font:700 3.2rem/1 var(--head);color:var(--hot)}
+.top b{font-weight:600}
+.top small{display:block;color:var(--mute);font-size:.8rem}
+.card ol{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.card li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.card li span:last-child{font-variant-numeric:tabular-nums;color:var(--mute)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:640px;font-variant-numeric:tabular-nums}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+thead th{background:var(--panel);position:sticky;top:0;font:600 .95rem var(--head);letter-spacing:.04em;color:var(--mute);cursor:pointer;user-select:none}
+thead th[aria-sort]{color:var(--hot)}
+tbody tr:hover{background:#192739}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background:var(--c-sub)}
+.south{background:var(--c-south)}.east{background:var(--c-east)}.west{background:var(--c-west)}.north{background:var(--c-north)}
+.note,.msg{color:var(--mute);font-size:.88rem;margin:10px 0 0}
+.msg{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;font-size:1rem;color:var(--text)}
+footer{margin-top:40px;color:var(--mute);font-size:.85rem}
+@media (max-width:520px){.top .big{font-size:2.6rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1 id="league">Riverdale League Stats</h1>
+  <p id="status">Loading stats…</p>
+  <nav class="tabs" id="tabs" aria-label="Stat period"></nav>
+</header>
+<main id="main"></main>
+<footer>Stats update automatically from the league spreadsheet.</footer>
+</div>
+
+<script>
+// ===== EDIT THESE TWO LINES =====
+const LEAGUE_NAME = "Riverdale League";
+const CSV_URL = "PASTE_YOUR_PUBLISHED_CSV_LINK_HERE";
+// ================================
+
+const COLS = ["GP","PPG","RPG","APG","SPG","BPG","MPG"];
+const LEADER_STATS = [["PPG","Points"],["RPG","Rebounds"],["APG","Assists"],["SPG","Steals"],["BPG","Blocks"]];
+const $ = id => document.getElementById(id);
+let sections = [], active = 0, sortKey = "PPG", sortDir = -1, team = "all", q = "", minGP = 1;
+
+document.title = LEAGUE_NAME + " Stats";
+$("league").textContent = LEAGUE_NAME + " Stats";
+
+function parseCSV(t){
+  const rows=[]; let row=[], cell="", inQ=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(inQ){ if(c=='"'){ if(t[i+1]=='"'){cell+='"';i++} else inQ=false } else cell+=c }
+    else if(c=='"') inQ=true;
+    else if(c==","||c=="\t"){ row.push(cell); cell="" }
+    else if(c=="\n"||c=="\r"){ if(c=="\r"&&t[i+1]=="\n")i++; row.push(cell); rows.push(row); row=[]; cell="" }
+    else cell+=c;
+  }
+  row.push(cell); rows.push(row); return rows;
+}
+
+const titleCase = s => s.toLowerCase().replace(/\b\w/g,m=>m.toUpperCase());
+function cleanTitle(s){ return titleCase(s.replace(/^\d{4}\s+/,"").replace(/\s*stats\s*$/i,"")) }
+
+function parseSections(rows){
+  const out=[]; let cur=null, tm=null;
+  const newSection = t => { cur={title:t,players:[]}; out.push(cur); tm=null };
+  const setTeam = name => { if(!cur) newSection("Latest Game"); tm=titleCase(name) };
+  for(const r of rows){
+    const ne=r.map(c=>c.trim()).filter(Boolean);
+    if(!ne.length) continue;
+    if(ne.length===1){ /stats/i.test(ne[0]) ? newSection(cleanTitle(ne[0])) : setTeam(ne[0]); continue }
+    if(/games/i.test(ne[1])){ if(!/^player/i.test(ne[0])) setTeam(ne[0]); continue }
+    if(ne.length>=8 && cur && tm){
+      const v=ne.slice(1,8).map(x=>parseFloat(x.replace("*","")));
+      if(v.some(isNaN)) continue;
+      const p={name:ne[0],team:tm}; COLS.forEach((k,i)=>p[k]=v[i]);
+      cur.players.push(p);
+    }
+  }
+  return out.filter(s=>s.players.length);
+}
+
+const teamClass = n => /south/i.test(n)?"south":/east/i.test(n)?"east":/west/i.test(n)?"west":/north/i.test(n)?"north":"";
+const fmt = (k,v) => k==="GP"?v:(Math.round(v*10)/10).toFixed(1);
+const esc = s => s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderTabs(){
+  $("tabs").innerHTML = sections.map((s,i)=>`<button type="button" data-i="${i}" aria-pressed="${i===active}">${esc(s.title)}</button>`).join("");
+  $("tabs").querySelectorAll("button").forEach(b=>b.onclick=()=>{active=+b.dataset.i; team="all"; q=""; renderTabs(); renderMain()});
+}
+
+function leaderCard([k,label],pool){
+  const list=pool.filter(p=>p.GP>=minGP).sort((a,b)=>b[k]-a[k]).slice(0,5);
+  if(!list.length) return "";
+  const [f,...rest]=list;
+  return `<div class="card"><h3>${label} per game</h3>
+  <div class="top"><span class="big">${fmt(k,f[k])}</span><div><b>${esc(f.name)}</b><small><i class="dot ${teamClass(f.team)}"></i>${esc(f.team)} · ${f.GP} GP</small></div></div>
+  <ol>${rest.map(p=>`<li><span><i class="dot ${teamClass(p.team)}"></i>${esc(p.name)}</span><span>${fmt(k,p[k])}</span></li>`).join("")}</ol></div>`;
+}
+
+function renderMain(){
+  const s=sections[active], pool=s.players.filter(p=>p.GP>0);
+  const teams=[...new Set(pool.map(p=>p.team))];
+  const maxGP=Math.max(...pool.map(p=>p.GP));
+  const mins=[1,2,3,5,8].filter(n=>n<=maxGP);
+  if(!mins.includes(minGP)) minGP=1;
+  $("main").innerHTML=`
+  <h2>League leaders</h2>
+  <div class="controls"><label>Minimum games played
+    <select id="min">${mins.map(n=>`<option value="${n}" ${n===minGP?"selected":""}>${n}+</option>`).join("")}</select></label></div>
+  <div class="leaders">${LEADER_STATS.map(l=>leaderCard(l,pool)).join("")}</div>
+  <h2>All players</h2>
+  <div class="controls">
+    <label>Team<select id="team"><option value="all">All teams</option>${teams.map(t=>`<option ${t===team?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
+    <label>Find a player<input type="search" id="q" value="${esc(q)}" placeholder="Type a name"></label>
+  </div>
+  <div class="scroll"><table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table></div>
+  <p class="note">Players with no games played are hidden. Select a column heading to sort.</p>`;
+  $("min").onchange=e=>{minGP=+e.target.value; renderMain()};
+  $("team").onchange=e=>{team=e.target.value; renderTable()};
+  $("q").oninput=e=>{q=e.target.value; renderTable()};
+  renderTable();
+}
+
+function renderTable(){
+  const s=sections[active];
+  let rows=s.players.filter(p=>p.GP>0 && (team==="all"||p.team===team) && p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  rows.sort((a,b)=> sortKey==="name"||sortKey==="team" ? a[sortKey].localeCompare(b[sortKey])*sortDir : (a[sortKey]-b[sortKey])*sortDir );
+  const heads=[["name","Player"],["team","Team"],...COLS.map(c=>[c,c])];
+  $("head").innerHTML=heads.map(([k,l])=>`<th scope="col" data-k="${k}" tabindex="0" ${k===sortKey?`aria-sort="${sortDir<0?"descending":"ascending"}"`:""}>${l}${k===sortKey?(sortDir<0?" ▼":" ▲"):""}</th>`).join("");
+  $("head").querySelectorAll("th").forEach(th=>{
+    const go=()=>{const k=th.dataset.k; if(k===sortKey) sortDir*=-1; else {sortKey=k; sortDir=(k==="name"||k==="team")?1:-1} renderTable()};
+    th.onclick=go; th.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}};
+  });
+  $("body").innerHTML=rows.length?rows.map(p=>`<tr><td>${esc(p.name)}</td><td><i class="dot ${teamClass(p.team)}"></i>${esc(p.team)}</td>${COLS.map(c=>`<td>${fmt(c,p[c])}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="9">No players match. Clear the search or pick another team.</td></tr>`;
+}
+
+function load(text){
+  sections=parseSections(parseCSV(text));
+  if(!sections.length){ $("status").textContent="No stats found."; $("main").innerHTML=`<p class="msg">The spreadsheet was read, but no player rows were found. Check that the published tab is the stats tab.</p>`; return }
+  active=Math.max(0,sections.findIndex(s=>/regular/i.test(s.title)));
+  $("status").textContent="Last loaded "+new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+  renderTabs(); renderMain();
+}
+
+async function start(){
+  if(CSV_URL.startsWith("PASTE")){
+    $("status").textContent="Preview mode";
+    $("main").innerHTML=`<p class="msg">No spreadsheet link has been added yet. To preview the page, choose your downloaded CSV file here.<br><br><input type="file" id="f" accept=".csv,text/csv"></p>`;
+    $("f").onchange=e=>e.target.files[0].text().then(load);
+    return;
+  }
+  try{
+    const res=await fetch(CSV_URL+(CSV_URL.includes("?")?"&":"?")+"t="+Date.now());
+    if(!res.ok) throw new Error(res.status);
+    load(await res.text());
+  }catch(err){
+    $("status").textContent="Stats unavailable";
+    $("main").innerHTML=`<p class="msg">Stats couldn't be loaded. Check your connection and refresh the page. League staff: confirm the sheet is still published to the web as CSV.</p>`;
+  }
+}
+start();
+</script>
+</body>
+</html>
