@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toronto Summer League Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#14202e;--panel:#1c2b3e;--line:#2b3d54;--text:#eef2f7;--mute:#97a6ba;--hot:#ff6b2c;
+--c-south:#3dbb74;--c-east:#e5484d;--c-west:#f2b632;--c-north:#8b7cf6;--c-sub:#97a6ba;
+--head:"Barlow Condensed","Arial Narrow",Impact,sans-serif;--body:Barlow,system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.5 var(--body);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 48px}
+header{padding:36px 0 20px;border-bottom:4px solid var(--hot)}
+h1{font:700 clamp(2.4rem,7vw,4.2rem)/.95 var(--head);margin:0;letter-spacing:.01em}
+header p{margin:8px 0 0;color:var(--mute)}
+h2{font:700 1.6rem/1.1 var(--head);margin:36px 0 14px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 0}
+.tabs button{font:600 1.05rem var(--head);letter-spacing:.03em;background:var(--panel);color:var(--text);border:1px solid var(--line);padding:8px 16px;border-radius:999px;cursor:pointer}
+.years{margin-top:18px}.years button{font-size:1.25rem}
+.tabs button[aria-pressed=true]{background:var(--hot);border-color:var(--hot);color:#1a0d05}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:0 0 14px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--mute)}
+select,input[type=search]{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font:inherit;min-width:150px}
+.leaders{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card h3{font:700 1.15rem var(--head);letter-spacing:.04em;margin:0 0 8px;color:var(--mute)}
+.top{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.big{font:700 3.2rem/1 var(--head);color:var(--hot)}
+.top b{font-weight:600}
+.top small{display:block;color:var(--mute);font-size:.8rem}
+.card ol{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.card li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.card li span:last-child{font-variant-numeric:tabular-nums;color:var(--mute)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:640px;font-variant-numeric:tabular-nums}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+thead th{background:var(--panel);position:sticky;top:0;font:600 .95rem var(--head);letter-spacing:.04em;color:var(--mute);cursor:pointer;user-select:none}
+thead th[aria-sort]{color:var(--hot)}
+tbody tr:hover{background:#192739}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background:var(--c-sub)}
+.south{background:var(--c-south)}.east{background:var(--c-east)}.west{background:var(--c-west)}.north{background:var(--c-north)}
+.note,.msg{color:var(--mute);font-size:.88rem;margin:10px 0 0}
+.msg{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;font-size:1rem;color:var(--text)}
+footer{margin-top:40px;color:var(--mute);font-size:.85rem}
+@media (max-width:520px){.top .big{font-size:2.6rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1 id="league">Toronto Summer League Stats</h1>
+  <p id="status">Loading stats…</p>
+  <nav class="tabs years" id="years" aria-label="Season"></nav>
+  <nav class="tabs" id="tabs" aria-label="Stat period"></nav>
+</header>
+<main id="main"></main>
+<footer>Stats are updated by the league after each game day.</footer>
+</div>
+
+<script>
+// ===== EDIT THESE =====
+const LEAGUE_NAME = "Toronto Summer League";
+// Each season and the exact name of its CSV file in this repository.
+// To add a season, add a line here and upload its CSV.
+const YEARS = {
+  "2026": "STATS - 2026 Stats.csv",
+  "2025": "STATS - 2025 Stats.csv",
+  "2024": "STATS - 2024 Stats.csv",
+  "2023": "STATS - 2023 Stats.csv"
+};
+// =======================
+// Saved copy of the stats, shown only if a CSV file can't be loaded.
+const EMBEDDED = {"2026": " ,,,,,,,,\n2026 SUMMER LEAGUE STATS,,,,,,,,\n ,,,,,,,,\n,,,,,,,,\n,,,,,,,,\n,,,,,,,,\n,,,,,,,,\n2026 PRESEASON STATS,,,,,,,,\n  ,,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG),Minutes Per Game (MPG)\n,Jacob Freeman ,1,5,7,5,1,0,30*\n,Latrell Harris,0,0,0,0,0,0,0\n,Michael Walker,0,0,0,0,0,0,0\n,Emile Appleyard-Jones,1,26,10,6,11,9,35*\n,Nicolas Kim,0,0,0,0,0,0,0\n,Jett Kulas,0,0,0,0,0,0,0\n,Wyatt Kulas,1,10,8,5,3,0,30*\n,Tomo Sakamoto-Lin,0,0,0,0,0,0,0\n,Will McManus,0,0,0,0,0,0,0\n,Nathaniel Richard,0,0,0,0,0,0,0\n,Declan Stackhouse,0,0,0,0,0,0,0\n,,,,,,,,\n,EAST RIVERDALE EAGLES,,,,,,,\n,Sen Bui,0,0,0,0,0,0,0\n,Austin Durant,1,5,4,1,0,0,25*\n,Cody Gaetz,0,0,0,0,0,0,0\n,Foster Glover-Nairn,0,0,0,0,0,0,0\n,Hank Jackson,0,0,0,0,0,0,0\n,Vincent Lin,0,0,0,0,0,0,0\n,Jack McGuire,0,0,0,0,0,0,0\n,Nathan Mesfin,0,0,0,0,0,0,0\n,Levi Roywitz,1,3,2,2,0,1,25*\n,Dylan Tse,1,0,1,0,0,0,20*\n,Xavier Zibert,0,0,0,0,0,0,0\n,,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,,\n,Turner Aucoin,0,0,0,0,0,0,0\n,Carter Ellingwood,0,0,0,0,0,0,0\n,Henry Ellingwood,1,2,2,2,0,0,30*\n,Jeevan Gundu,1,42,52,2,1,1,40*\n,Baz Hewlett,0,0,0,0,0,0,0\n,Hakan Jilani,1,17,7,7,1,0,40*\n,Hanz Linsangan,1,14,13,2,4,0,35*\n,Oliver Meredith,0,0,0,0,0,0,0\n,Koen Ngo,0,0,0,0,0,0,0\n,Darius Rojas,0,0,0,0,0,0,0\n,Mattias Saavedra,0,0,0,0,0,0,0\n,,,,,,,,\n,NORTH RIVERDALE ROCKIES,,,,,,,\n,Mason Agard,0,0,0,0,0,0,0\n,Jawaad Badrudin ,0,0,0,0,0,0,0\n,George Batakis,0,0,0,0,0,0,0\n,William Bolt,0,0,0,0,0,0,0\n,Ehsan Hakimi,1,30,5,6,8,0,30*\n,Tomas Ordonez,0,0,0,0,0,0,0\n,Eliot Park,1,27,17,7,2,0,30*\n,Michael Santos,0,0,0,0,0,0,0\n,Max Tsue-McNab,0,0,0,0,0,0,0\n,Theo Toth,1,14,5,2,1,0,0\n,,,,,,,,\n2026 REGULAR SEASON STATS,,,,,,,,\n,,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG),Minutes Per Game (MPG)\n,Ben Nielsen,1,8,2,2,0,0,20*\n,Jacob Freeman ,1,4,10,1,2,0,30*\n,Latrell Harris,11,35.4,8.4,4.9,1.9,0.6,35.9*\n,Jaden Dalisay,1,20,5,3,1,0,20*\n,Emile Appleyard-Jones,3,17.7,8,4,1.7,1.3,26.7*\n,Foster Glover-Nairn,4,3,4.3,1.3,1,1,21.3*\n,Nicolas Kim,4,19.5,9.8,6.3,3.2,0.8,31.3*\n,Jett Kulas,12,6.9,5.5,2.5,1.1,0,20.9*\n,Wyatt Kulas,11,9,5.1,3.9,1.3,0.4,26.3*\n,Tomo Sakamoto-Lin,3,5.7,7,2.3,1,0.3,25*\n,Will McManus,7,36.6,12.2,7.6,2.7,1.5,35.7*\n,Nathaniel Richard,7,10,12.7,4.5,2.6,3,25*\n,Declan Stackhouse,6,8,8.2,1.8,3.7,1.5,25*\n,,,,,,,,\n,EAST RIVERDALE EAGLES,,,,,,,\n,Sen Bui,6,35.2,13.7,6,2.3,3,38.3*\n,Austin Durant,9,15.1,4,3,0.9,0.3,33.4*\n,Cody Gaetz,6,15.3,23.5,5.8,1.7,0.8,36.7*\n,Foster Glover-Nairn,2,7,9,5,0,0.5,22.5*\n,Hank Jackson,3,16,17,2.7,2.7,3.7,31.7*\n,Michael Santos,1,38,17,6,4,1,40\n,Vincent Lin,3,11,6.3,1.7,1,0.7,28.3*\n,Jack McGuire,5,16.2,4.5,3.2,2.4,0.2,33*\n,Nathan Mesfin,1,10,4,2,2,0,30*\n,Levi Roywitz,9,3.9,3.7,2.8,1.3,0.6,25.6*\n,Tomo Sakamoto-Lin,1,0,2,0,0,0,10*\n,Dylan Tse,8,1,2.9,1.5,1.4,0.3,25.3*\n,George Batakis,3,48.3,12.3,4.7,1.3,1.7,40\n,Xavier Zibert,3,40,14.3,2.3,2.3,1.3,38.3*\n,,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,,\n,Turner Aucoin,2,5.5,8,0.5,1,0,27.5*\n,Carter Ellingwood,5,2,6.4,5,2.2,0.6,18*\n,Dylan Tse,3,2,1.3,1.3,0,0,15*\n,Jaden Dalisay,2,12,5,4,1,0,25*\n,Henry Ellingwood,7,8.3,7.6,4,1,0.9,27.1*\n,Jeevan Gundu,9,27.5,30.1,5.3,2.2,0.6,39.5*\n,Ben Nielsen,4,7.3,4,2.3,0.3,0,17.5*\n,Hakan Jilani,3,25.7,6.3,9.7,1,0.3,36.7*\n,Hanz Linsangan,10,30.6,9.1,5.3,2.5,0.5,32.7*\n,Oliver Meredith,5,12.2,15.2,3,1,1.4,25*\n,Theo Toth,2,19.5,11,7,3.5,0,35*\n,Koen Ngo,5,20.2,6.4,9,2.4,0.6,31*\n,Darius Rojas,4,12.8,8.3,7.8,2.5,0.5,35*\n,William Bolt,1,8,7,4,4,0,40\n,Mattias Saavedra,1,3,1,0,0,0,10*\n,,,,,,,,\n,NORTH RIVERDALE ROCKIES,,,,,,,\n,Mason Agard,10,14.6,9.5,4.3,1.9,1.8,36.4*\n,Jawaad Badrudin ,11,30.5,7.8,5,1.9,0.2,38.3*\n,George Batakis,4,14.5,10.4,1.8,1.2,1.5,27.5*\n,William Bolt,3,0.7,1,2,1.7,0,25*\n,Ehsan Hakimi,10,26.9,16.3,7.6,4.5,0.4,39*\n,Tomas Ordonez,2,0,2.5,2,2.5,0,20*\n,Oliver Meredith,2,13,11.5,2,0.5,0,40\n,Eliot Park,5,21.2,14.2,4.2,1.6,0.2,38*\n,Michael Santos,5,24.6,17,5.2,1.8,0.9,37*\n,James Archee,3,9.3,8.3,2,1.3,0,30*\n,Theo Toth,4,14.5,12.3,3.3,2.3,0.5,23.8*\n,,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,,\n,James Archee (SUB),3,16.7,4.7,4,1.3,1.3,38.3*\n,Adrian Wickramanayake ,1,0,8,5,2,1,40\n,Brandon Keim,1,25,13,1,1,0,30*\n,Carson Glover-Nairn,2,8,2.5,1.5,0.5,0,27.5*\n,Eli Charters,1,7,7,1,1,0,20*\n,Matthew Walker,3,19.3,12.3,3.3,3.3,1.7,31.6*\n,Ben Nielsen (SUB),2,7.5,1.5,1,0.5,0,22.5*\n,Teako (Jay),1,6,2,1,1,0,20*\n,Omar Alavi,1,7,10,1,3,0,20*\n,Thomas Daulton,2,3,3,1.5,3.5,1.5,20*\n,Rowan McDonald,1,0,8,16,0,1,30*\n,Jaden Dalisay (SUB),2,11.5,3.5,2,1,0,25*\n,Darius Benoist,8,12.6,6.9,2.7,0.8,0.6,31.3*\n,Carter Stone,1,4,17,2,2,2,40\n,Sajjad Suleiman ,1,10,6,2,2,0,40\n,Kietin Morzalla,3,13.7,7.7,3.3,1.7,0.3,35*\n,Benjamin Walker ,1,3,1,0,0,0,15*\n,Max Hakimi ,1,22,10,6,2,0,30*\n,Tyson Rojas,1,9,4,2,3,0,25*\n,Indimir Zogomiori,1,34,15,4,1,0,40\n,Ezekiel Walker,1,5,1,0,0,0,40\n,Xavier Belosco ,1,28,3,1,4,1,40\n,,,,,,,,\n,,,,,,,,\n,,,,,,,,\n,2026 PLAYOFF SEMIFINALS STATS,,,,,,,\n,,,,,,,,\n,,,,,,,,\n,SOUTH RIVERDALE SERPENTS,,,,,,,\n,Player Name ,Games Played,Points Per Game,Rebounds Per Game,Assists Per Game,Steals Per Game,Blocks Per Game,Minutes Per Game\n,Ben Nielsen,0,0,0,0,0,0,0\n,Declan Stackhouse,1,14,12,1,4,2,30*\n,Emile Appleyard-Jones,1,19,13,6,2,2,40\n,Foster Glover-Nairn ,2,0,4,3.5,2,0.5,12.5*\n,Jacob Freeman,0,0,0,0,0,0,0\n,Jett Kulas,4,8.5,6.5,2.8,0.3,0,22.5*\n,Latrell Harris,4,28,8.3,2.8,1.5,0.5,36.3*\n,Nathaniel Richard,2,16.5,17,2,1.5,1.5,40\n,Nicolas Kim,1,8,5,4,2,0,30*\n,Turner Aucoin,2,4,6.5,1.5,0.5,0.5,32.5*\n,Will McManus,1,44,10,7,2,2,35*\n,Wyatt Kulas,4,3.5,3,2.3,1.3,0.3,12.5*\n,,,,,,,,\n,North Riverdale Rockies,,,,,,,\n,Player Name ,Games Played,Points Per Game,Rebounds Per Game,Assists Per Game,Steals Per Game,Blocks Per Game,Minutes Per Game\n,Ehsan Hakimi,1,35,11,4,5,1,40\n,Eliot Park,3,45,21.3,2,1.3,0.7,40\n,James Archee,0,0,0,0,0,0,0\n,Jawaad Badrudin,1,19,10,4,0,0,40\n,Mason Agard ,3,15.3,18.7,6.3,2.3,2,40\n,Mattias Saavedra,0,0,0,0,0,0,0\n,Nathan Mesfin,1,4,4,2,2,0,15*\n,Oliver Meredith,1,19,16,2,0,0,40\n,Xavier Zibert,0,0,0,0,0,0,0\n,,,,,,,,\n,West Riverdale Warriors,,,,,,,\n,Player Name ,Games Played,Points Per Game,Rebounds Per Game,Assists Per Game,Steals Per Game,Blocks Per Game,Minutes Per Game\n,Carter Ellingwood,2,1.5,3.5,2.5,1,0,10*\n,Darius Rojas,1,31,6,6,3,3,40\n,Dylan Tse,3,2.3,5,1,0.7,0,26.7*\n,Hakan Jilani,0,0,0,0,0,0,0\n,Hanz Linsangan,1,27,4,1,0,0,40\n,Henry Ellingwood,1,6,6,3,1,0,30*\n,Jaden Dalisay,2,10,5.5,2,0,0,15*\n,Jeevan Gundu,2,21,23,3,1.5,1,40\n,Koen Ngo,3,33.7,7.3,6.7,4,0,38.3*\n,Theo Toth,2,45,29,5.5,3.5,1.5,40\n,Tomas Ordonez,0,0,0,0,0,0,0\n,William Bolt,1,10,10,5,4,1,25*\n,,,,,,,,\n,East Riverdale Eagles,,,,,,,\n,Player Name ,Games Played,Points Per Game,Rebounds Per Game,Assists Per Game,Steals Per Game,Blocks Per Game,Minutes Per Game\n,Austin Durant,0,0,0,0,0,0,0\n,Cody Gaetz,4,20.7,21.3,5.5,2.8,0.5,40\n,George Batakis,2,55.5,10.5,2.5,1.5,0.5,40\n,Hank Jackson,0,0,0,0,0,0,0\n,Jack McGuire,1,7,3,3,0,0,40\n,Levi Roywitz,4,5.5,7,4,0.8,0,40\n,Michael Santos,2,19.5,12,3.5,3,1,40\n,Sen Bui,2,28.5,15,6.5,3.5,0.5,40\n,Tomo Sakamoto-Lin,0,0,0,0,0,0,0\n,Vincent Lin,0,0,0,0,0,0,0\n,,,,,,,,\n,,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,,\n,Carson Glover Nairn,5,5.9,2.2,1.6,0.6,0,37*\n,Darius Benoist,3,8.7,7.7,2.3,1,0.3,38.3*\n,James Carmichael,1,5,3,0,1,1,15*\n,Donat Jackson,1,6,10,0,3,1,40\n,Michael Walker,1,16,11,3,6,1,40\n,Keitin Morzaria,1,6,5,1,2,0,40\n,Ethan Li,1,0,9,0,0,0,40\n,,,,,,,,\n,,,,,,,,\n,2026 PLAYOFF FINALS STATS,,,,,,,\n,,,,,,,,\n,,,,,,,,\n,,,,,,,,\n,West Riverdale Warriors,,,,,,,\n,Player Name ,Games Played,Points Per Game,Rebounds Per Game,Assists Per Game,Steals Per Game,Blocks Per Game,Minutes Per Game\n,Carter Ellingwood,1,0,2,1,0,0,5*\n,Darius Rojas,2,15.5,8,3,2.5,0,37.5*\n,Dylan Tse,4,0,1.3,0.8,0,0.3,10*\n,Hakan Jilani,5,27,9.8,5.6,1.2,0.8,37*\n,Hanz Linsangan,3,17.3,3.3,0.7,0.3,0,30*\n,Henry Ellingwood,3,5.7,1.7,1,0.7,0.3,21.7*\n,Jaden Dalisay,0,0,0,0,0,0,0\n,Jeevan Gundu,5,10,18,6,0.6,0.6,40\n,Koen Ngo,5,19.2,5,4.2,3.4,0,38*\n,Theo Toth,5,16.8,12,5.8,2.2,0.8,32*\n,Tomas Ordonez,0,0,0,0,0,0,0\n,William Bolt,3,0,0.7,0.3,0,0,5*\n,,,,,,,,\n,,,,,,,,\n,East Riverdale Eagles,,,,,,,\n,Player Name ,Games Played,Points Per Game,Rebounds Per Game,Assists Per Game,Steals Per Game,Blocks Per Game,Minutes Per Game\n,Austin Durant,5,8.2,3,2.8,1,0.2,33*\n,Cody Gaetz,4,11,21.8,2.5,1.8,0.8,40\n,George Batakis,1,26,21,4,1,1,40\n,Hank Jackson,3,7.7,8,2.7,2,4,33.3*\n,Jack McGuire,1,11,2,2,1,0,20*\n,Levi Roywitz,4,0.8,3,0.8,0.5,0,20*\n,Michael Santos,4,34,8.3,2.3,3,0,40\n,Sen Bui,4,29.5,10,3.5,3,1.3,40\n,Tomo Sakamoto-Lin,0,0,0,0,0,0,0\n,Vincent Lin,1,1,7,1,1,0,20*\n,,,,,,,,\n,,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,,\n,Darius Benoist ,2,6.5,4.5,1.5,0.5,2,35*\n,Nam Bui,1,2,2,0,1,0,30*", "2025": ",,,,,,,\n2025 SUMMER LEAGUE STATS,,,,,,,\n,,,,,,,\n,,,,,,, \n,,,,,,,\n,,,,,,,\n,,,,,,,\n2025 PRESEASON STATS,,,,,,,\n,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG)\n,Jett Kulas,1,26,16,2,1,0\n,Wyatt Kulas ,2,2.5,6,2,0,0\n,Nathan Seaman,1,2,4,2,1,0\n,Michael Walker,0,0,0,0,0,0\n,Vincent Lin,0,0,0,0,0,0\n,Robert Syme,0,0,0,0,0,0\n,,,,,,,\n,EAST RIVERDALE EAGLES,,,,,,\n,Koen Ngo,1,27,4,5,1,0\n,Hank Jackson,2,14,8,2.5,3,0\n,Oskar O'Dea ,0,0,0,0,0,0\n,Roman Williams,0,0,0,0,0,0\n,Austin Durant,2,3,2,1,0.5,0\n  ,Jack McGuire,0,0,0,0,0,0\n,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,\n,Carter Ellingwood,0,0,0,0,0,0\n,Henry Ellingwood,1,0,2,1,0,0\n,Mattias Saavedra,2,16.5,12,2,2,0\n,Turner Aucoin,0,0,0,0,0,0\n,Max Gundy,0,0,0,0,0,0\n,Declan Stackhouse,0,0,0,0,0,0\n,Ehsan Hakimi,1,26,6,2,1,1\n,Foster Glover-Nairn,1,0,2,0,1,0\n,,,,,,,\n,NORTH RIVERDALE ROCKIES,,,,,,\n,Dylan Wambera,1,27,16,5,0,5\n,Carter Smith,1,4,13,5,2,2\n,Kai Savage,1,4,5,4,0,0\n,Rawi Salman,0,0,0,0,0,0\n,Rein Lilles,0,0,0,0,0,0\n,Latrell Harris,0,0,0,0,0,0\n,Emile Appleyard-Jones,2,19.5,8,1,1,0\n,Baz Hewlett,1,0,5,5,1,0\n,Michael Santos,0,0,0,0,0,0\n,Mason Agard,2,9,4.5,2,1,0\n,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,\n,Cameron Zeibots,1,7,3,1,1,0\n,Thomas Daulton,1,4,7,3,5,0\n,,,,,,,\n,,,,,,,\n2025 REGULAR SEASON STATS,,,,,,,\n,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG)\n,Jett Kulas,10,17,14,6.6,1.7,0.3\n,Wyatt Kulas ,10,11.7,8.6,3.5,1.5,0.4\n,Latrell Harris ,5,24.4,11.6,2.4,3.8,0.4\n,Michael Walker,5,25.2,21.2,8,2.8,1.2\n,Declan Stackhouse,5,3,8.4,0.6,1.6,0.4\n,Emile Appleyard-Jones,6,18,12.2,3.7,2.7,0.3\n,,,,,,,\n,EAST RIVERDALE EAGLES,,,,,,\n,Foster Glover-Nairn,3,2,2.3,0.7,1,0\n,Hank Jackson,9,23.9,19,3.7,4.6,1.9\n,Oskar O'Dea ,5,23.6,11.2,3.2,1.2,0.2\n,Nathan Seaman,2,12.5,8,1.5,1.5,0\n,Vincent Lin,7,14.4,17,2.7,3.4,0.4\n,Austin Durant,9,10.4,3,1.8,1.7,0.3\n,Jack McGuire,3,19.3,6,5,3.3,0\n,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,\n,Carter Ellingwood,5,15.8,12.4,8,5.2,0.4\n,Henry Ellingwood,7,5.8,7.1,2.7,1.5,0\n,Mattias Saavedra,2,9,9.5,1.5,5.5,0.5\n,Turner Aucoin,6,22.5,25.8,6.7,3,3.7\n,Max Gundy,2,2,4,0,2,1.5\n,Koen Ngo,6,15.3,11.8,5.2,3.5,0\n,Ehsan Hakimi,7,33.1,14.1,3.9,3.2,0.9\n,,,,,,,\n,NORTH RIVERDALE ROCKIES,,,,,,\n,Dylan Wambera,1,14,12,2,0,1\n,Carter Smith,1,2,21,3,2,3\n,Kai Savage,1,4,5,1,0,0\n,Rawi Salman,1,2,1,0,2,0\n,Jawaad Badrudin,3,38,11,4,2.3,0.3\n,Robert Syme,6,34.2,10.5,5.4,2.8,0.3\n,Roman Williams,3,11,12,1,3,0\n,Baz Hewlett,2,1,3.5,1,0,0\n,Michael Santos,4,28,16.7,4.2,2,0\n,Mason Agard,7,23.3,11.7,3,1.9,0\n,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,\n,Cooper Bugatto,4,2.7,9.3,1.3,6,0\n,Rhys VanSchyndel,1,0,4,2,1,0\n,Oliver Meredith,2,6,10.5,1,0.5,0.5\n,Levi Roywitz,6,5,6.7,2.8,0.7,0.2\n,Umar Ojomu,1,18,14,2,1,0\n,Conor Campbell,1,16,3,0,0,0\n,Jack Roywitz,2,22.5,30.5,2,4,2\n,Eli Charters,1,2,13,3,1,0\n,Sen Bui,2,25,20.5,4.5,4,1\n,Teddy Thomas,1,6,10,4,3,0\n,Adam Muthomi,3,40,20.7,7,2.3,1.3\n,Thomas Daulton,2,6,9,4.5,5,0\n,Yunus Popal,1,8,8,0,2,0\n,Hakan Jilani,1,128,13,4,0,0\n,Theo Toth,1,5,13,22,0,0\n,Jeevan Gundu,1,13,57,4,5,0\n,George Batakis,3,34.7,21.3,4,0.3,2.3\n,Steven Chi,1,17,7,2,5,0\n,Danny Huang,1,0,6,2,1,0\n,Yamin Huang,1,29,7,4,1,1\n,Ryan Liu ,1,20,12,3,4,0\n,Jason Liu,2,4,8.5,1,2.5,0\n,,,,,,,\n2025 SEMIFINALS STATS,,,,,,,\n,,,,,,,\n,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG)\n,Jett Kulas,2,27,20.5,5.5,1.5,0\n,Wyatt Kulas ,2,16.5,9.5,6.5,2,0\n,Latrell Harris ,1,32,13,3,1,3\n,Michael Walker,1,13,7,7,2,1\n,Declan Stackhouse,2,20,33,4,3,0\n,Emile Appleyard-Jones,1,33,19,7,3,0\n,,,,,,,\n,EAST RIVERDALE EAGLES,,,,,,\n,Foster Glover-Nairn,2,10,12,8.5,0.5,0\n,Hank Jackson,0,0,0,0,0,0\n,Oskar O'Dea ,0,0,0,0,0,0\n,Nathan Seaman,1,21,5,1,0,0\n,Vincent Lin,0,0,0,0,0,0\n,Austin Durant,2,29.5,6,2,0,0\n,Jack McGuire,1,25,18,10,3,0\n,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,\n,Carter Ellingwood,1,10,17,10,7,1\n,Henry Ellingwood,2,6.5,5,1,3,0\n,Mattias Saavedra,1,6,10,1,1,0\n,Turner Aucoin,2,20.5,18.5,4,3,1.5\n,Max Gundy,0,0,0,0,0,0\n,Koen Ngo,2,31,16.5,7,3.5,0\n,Ehsan Hakimi,1,36,9,6,7,0\n,,,,,,,\n,NORTH RIVERDALE ROCKIES,,,,,,\n,Dylan Wambera,0,0,0,0,0,0\n,Carter Smith,0,0,0,0,0,0\n,Kai Savage,0,0,0,0,0,0\n,Rawi Salman,0,0,0,0,0,0\n,Jawaad Badrudin,0,0,0,0,0,0\n,Robert Syme,0,0,0,0,0,0\n,Roman Williams,0,0,0,0,0,0\n,Baz Hewlett,1,6,8,4,7,0\n,Michael Santos,0,0,0,0,0,0\n,Mason Agard,2,14.5,9,3,2.5,0\n,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,\n,Cooper Bugatto,1,22,18,6,12,1\n,George Batakis,1,24,20,3,2,2\n,Levi Roywitz,2,13.5,7.5,3,4,0.5\n,Nathaniel Richard,1,20,21,2,3,0\n,Carter Stone,1,22,10,1,6,2\n,,,,,,,\n2025 FINALS STATS,,,,,,,\n,,,,,,,\n,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG)\n,Jett Kulas,4,15,7,3.5,1,0\n,Wyatt Kulas ,5,9.8,7.8,5,0.8,0.2\n,Latrell Harris ,4,28.3,7.5,5.7,1.5,1\n,Michael Walker,4,24.2,9.2,9.3,2,1\n,Declan Stackhouse,4,3.6,7.1,3,2.1,0.6\n,Emile Appleyard-Jones,3,20.7,8.3,7.7,4.3,0.3\n,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,\n,Carter Ellingwood,2,12.5,12.5,7.5,1,1\n,Henry Ellingwood,2,0.5,2.5,2.5,0.5,0\n,Mattias Saavedra,1,5,4,0,1,0\n,Turner Aucoin,3,19.3,14,5.3,0.7,0.7\n,Max Gundy,0,0,0,0,0,0\n,Koen Ngo,3,17,10,6,1.7,0\n,Ehsan Hakimi,4,20.5,11.2,3,1,0\n,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,\n,\"\"\"J.B\"\"\",2,42.5,17.5,3.5,3,0.5\n,Yunus Popal,1,2,0,0,0,0\n,Joeseph Lockin,2,33,6,0,0.5,0\n,Noah T.,2,9.5,2,0.5,0.5,0\n,Esey Hadgu,2,33.5,13,5.5,2.5,0\n,Sam D.,1,12,4,0,0,0\n,Cooper Bugatto,2,13.5,5.5,2,3.5,0.5\n,Levi Roywitz,1,3,4,7,1,0", "2024": ",,,,,,,\n,,,2024 SUMMER LEAGUE STATS,,,,\n,,,,,,,\n,,,,,,,\n,,,,,,,\n,,,,,,,\n,,,,,,,\n,,,2024 PRESEASON STATS,,,,\n,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG)\n,Jett Kulas,3,16.3,14.7,3,0.7,0\n,Samuel Neumann,0,0,0,0,0,0\n,Carter Stone,0,0,0,0,0,0\n,Nathan Mesfin,1,9,6,0,6,0\n,Rowan MacDonald,0,0,0,0,0,0\n,,,,,,,\n,EAST RIVERDALE EAGLES,,,,,,\n,George Griffiths,1,8,5,2,5,0\n,Dario Ravelo-Lamb,3,18.7,26.7,2.3,2.7,1.3\n,Max Gundy,0,0,0,0,0,0\n,Koen Ngo,1,18,9,1,5,0\n,Cooper Bugatto,3,5.3,10,2,8,0\n,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,\n,Carter Ellingwood,3,9.7,15,6.7,6.3,1.3\n,Turner Aucoin,0,0,0,0,0,0\n,Joel Gonzalez,1,6,13,3,5,0\n,Adyan Absarr,1,0,3,1,4,0\n,Etienne Thumlert,0,0,0,0,0,0\n,,,,,,,\n,NORTH RIVERDALE GLADIATORS,,,,,,\n,Dylan Wambera,1,12,9,3,3,4\n,Kai Savage,1,8,12,0,3,0\n,Rawi Salman,0,0,0,0,0,0\n,Rein Lilles,1,24,12,1,8,0\n,Carter Smith,1,4,8,4,3,1\n,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,\n,Judah Ellingwood,1,30,17,1,6,1\n,Liam VanSchyndel,1,10,12,4,2,0\n,,,,,,,\n,,,,,,,\n,,,2024 REGULAR SEASON STATS,,,,\n,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG)\n,Jett Kulas,6,23.7,17.2,6.5,1.5,0.3\n,Samuel Neumann,2,3,6.5,2.5,1,0\n,Carter Stone,3,26.7,22.3,1.7,1.7,1\n,Nathan Mesfin,4,15.2,13,3.5,2.5,0.3\n,Rowan MacDonald,3,9.3,4.7,1.3,1.3,0\n,,,,,,,\n,EAST RIVERDALE EAGLES,,,,,,\n,George Griffiths,1,7,9,2,3,1\n,Dario Ravelo-Lamb,3,15,14,2,1,2.7\n,Max Gundy,1,4,9,3,0,0\n,Koen Ngo,4,35,17.3,3.3,4.3,0\n,Cooper Bugatto,2,4,9,3.5,4,0\n,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,\n,Carter Ellingwood,5,42.8,16.4,7.9,5.2,1.6\n,Turner Aucoin,2,14.5,21,5,1.5,3.5\n,Joel Gonzalez,1,21,9,3,5,0\n,Adyan Absarr,2,4,6,1,6.5,0\n,Etienne Thumlert,2,9.5,4.5,0.5,1.5,0\n,,,,,,,\n,NORTH RIVERDALE GLADIATORS,,,,,,\n,Dylan Wambera,4,21.8,12.5,3,2.3,2.5\n,Kai Savage,3,12.7,5,1.7,1.3,0\n,Rawi Salman,5,8.4,4.8,2.6,2.6,0.2\n,Rein Lilles,5,23.8,11.8,3.2,4.2,0.2\n,Carter Smith,4,3,12.8,7.6,3.7,0.8\n,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,\n,Lamyaa Badrudin,1,12,4,0,2,0\n,Wyatt Kulas,7,5.4,5.4,2.2,0.9,0\n,Mahi Ali,1,25,10,3,5,0\n,Judah Ellingwood,4,11.5,9.2,2.3,1.3,0.5\n,Roman Williams,4,19.8,14.3,4.5,0.8,1\n,Darius Rojas,2,24.5,11.5,5.5,2,1.5\n,Liam Van Schyndel,2,19,6,0.5,0,0.5\n,Henry Ellingwood,1,2,2,2,1,0\n,Rhys Van Schyndel,1,2,2,0,0,0\n,Toki Miura,1,8,10,7,5,0\n,Austin Durant,1,21,6,4,1,0\n,Jack McGuire,1,41,8,4,3,0\n,,,,,,,\n,,,,,,,\n,,,,,,,\n,\"*Due to Season Cancellation, there were no playoff statistics\",,,,,,", "2023": ",,,,,,,\n,,,2023 SUMMER LEAGUE STATS,,,,\n,,,,,,,\n,,,,,,,\n,,,*No 2023 Preseason Stats were recorded ,,,,\n,,,,,,,\n,,,,,,,\n,,,2023 REGULAR SEASON STATS,,,,\n,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG)\n,Jett Kulas,13,13,10.3,4.1,2.1,0\n,Toki Miura,8,14.2,13.3,4.3,2.8,0.9\n,Joel Gonzalez,11,11.3,6.6,1.5,4.5,0.5\n,,,,,,,\n,EAST RIVERDALE EAGLES,,,,,,\n,Cameron Trinh,4,12.7,10,2.8,1.5,0.3\n,George Griffiths ,7,15.3,5.9,0.7,3.3,0.3\n,Dario Lamb ,13,10.6,12.7,1.3,2.8,1.5\n,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,\n,Turner Aucoin ,5,6.4,7.2,2.8,1.8,0.8\n,Carter Ellingwood,13,17.1,10.5,3.3,2.6,0.6\n,Rawi Salman ,9,4.2,3.8,1.9,1.9,0\n,,,,,,,\n,NORTH RIVERDALE GLADIATORS,,,,,,\n,Dylan Wambera,13,23,12.9,1.9,1.2,2.8\n,Lamyaa Badrudin,4,7.3,6.6,1.7,1.5,0\n,Kai Savage ,8,4.3,7.3,1.5,1.4,0\n,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,\n,Hakan Jilani ,3,18,12.7,7,2.3,0.3\n,Carter Stone,5,18.4,13.4,1.6,1.8,1.2\n,Adyan Absarr ,3,4,4,0.6,2.2,0.6\n,Alex Ly,2,9,6.5,1,1.5,0.5\n,Carter Smith ,14,5.5,8.7,1.9,3.4,1\n,Nathan Mesfin,1,6,11,3,3,0\n,Darius Rojas,4,37,8,1.5,2.3,2\n,Etienne Thumlert ,4,15.7,8.5,0.5,1.8,0\n,Koen Ngo,4,17.3,8.3,3.5,3.2,0\n,Cooper Bugatto,1,8,11,0,4,0\n,Nathaniel Richards,1,32,13,3,3,2\n,Theo Wambera,1,0,2,0,0,0\n,James Feeley,1,10,8,1,0,0\n,Liam Van Schyndel,1,6,5,2,2,3\n,Wyatt Kulas,1,6,6,1,0,0\n,Rein Lilles,1,9,6,1,0,0\n,,,,,,,\n,,,2023 PLAYOFF SEMIFINALS,,,,\n,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG)\n,Jett Kulas,3,13.7,10.7,4.3,2,0.3\n,Toki Miura,2,15,11.5,2,3,1.5\n,Joel Gonzalez,3,11.7,5.7,3.3,6,0.3\n,,,,,,,\n,EAST RIVERDALE EAGLES,,,,,,\n,Cameron Trinh,0,0,0,0,0,0\n,George Griffiths ,2,11.5,4,1.5,2,0\n,Dario Lamb ,3,8.3,13.3,2.7,4,3.7\n,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,\n,Turner Aucoin ,5,9.8,12,4,1.2,1\n,Carter Ellingwood,4,19.8,9.8,5,1.8,1.8\n,Rawi Salman ,3,6,5,1.3,4,0.3\n,,,,,,,\n,NORTH RIVERDALE GLADIATORS,,,,,,\n,Dylan Wambera,2,27,13.5,0.5,2,5\n,Lamyaa Badrudin,3,12.7,4,1.7,2.3,0.3\n,Kai Savage ,2,1,5,1.5,2.5,0\n,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,\n,Carter Smith ,4,3.5,6,3.3,3.2,0.8\n,Etienne Thumlert ,3,27.7,8,1.7,1,0\n,Rein Lilles,2,12.5,8,1,3,0.5\n,Nathaniel Richards,1,18,12,10,5,4\n,Wyatt Kulas,2,6.5,1.5,1,0.5,0\n,Liam Van Schyndel,2,7,8,1.5,1.5,1.5\n,Yamin Huang ,1,19,9,1,4,0\n,Darius Rojas,1,46,8,0,3,0\n,Max Gundy ,1,2,3,1,3,0\n,,,,,,,\n,,,2023 PLAYOFF FINALS,,,,\n,,,,,,,\n,SOUTH RIVERDALE SERPENTS,Games Played,Points Per Game (PPG),Rebounds Per Game (RPG),Assists Per Game (APG),Steals Per Game (SPG),Blocks Per Game (BPG)\n,Jett Kulas,4,13.8,10.3,3,1.8,0\n,Toki Miura,4,8.8,12,5.2,3.5,1.8\n,Joel Gonzalez,2,10,7.5,2,6,0\n,,,,,,,\n,WEST RIVERDALE WARRIORS,,,,,,\n,Turner Aucoin ,2,7,12.5,2,0,0.5\n,Carter Ellingwood,4,18,7.8,2.7,2,1.3\n,Rawi Salman ,1,4,2,1,0,0\n,,,,,,,\n,SUBSTITUTE PLAYERS,,,,,,\n,Max Gundy ,2,8,10.5,3,2,2\n,Nathaniel Richards,1,14,18,8,5,2\n,Etienne Thumlert,2,16.5,6.5,2,2.5,0\n,Liam Van Schyndel,1,24,18,5,3,0\n,Carter Smith,1,8,6,4,1,3"};
+
+const COLS = ["GP","PPG","RPG","APG","SPG","BPG","MPG"];
+const AVG = ["PPG","RPG","APG","SPG","BPG"];
+const LEADER_STATS = [["PPG","Points"],["RPG","Rebounds"],["APG","Assists"],["SPG","Steals"],["BPG","Blocks"]];
+const $ = id => document.getElementById(id);
+const cache = {};
+let year = Object.keys(YEARS)[0], sections = [], active = 0, sortKey = "PPG", sortDir = -1, team = "all", q = "", minGP = 1, usedSaved = false;
+
+document.title = LEAGUE_NAME + " Stats";
+$("league").textContent = LEAGUE_NAME + " Stats";
+
+function parseCSV(t){
+  const rows=[]; let row=[], cell="", inQ=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(inQ){ if(c=='"'){ if(t[i+1]=='"'){cell+='"';i++} else inQ=false } else cell+=c }
+    else if(c=='"') inQ=true;
+    else if(c==","||c=="\t"){ row.push(cell); cell="" }
+    else if(c=="\n"||c=="\r"){ if(c=="\r"&&t[i+1]=="\n")i++; row.push(cell); rows.push(row); row=[]; cell="" }
+    else cell+=c;
+  }
+  row.push(cell); rows.push(row); return rows;
+}
+
+const titleCase = s => s.toLowerCase().replace(/\b\w/g,m=>m.toUpperCase());
+const cleanTitle = s => titleCase(s.replace(/^\d{4}\s+/,"").replace(/\s*stats\s*$/i,""));
+const isSection = s => /^\d{4}\b/.test(s) || /preseason|regular season|playoff|semifinal|finals?\b/i.test(s);
+
+function parseSections(rows){
+  const out=[]; let cur=null, tm=null;
+  const newSection = t => { cur={title:t,players:[]}; out.push(cur); tm=null };
+  const setTeam = name => { if(!cur) newSection("Stats"); tm=titleCase(name) };
+  for(const r of rows){
+    const ne=r.map(c=>c.trim()).filter(Boolean);
+    if(!ne.length) continue;
+    if(ne.length===1){
+      if(ne[0].startsWith("*")) continue;
+      isSection(ne[0]) ? newSection(cleanTitle(ne[0])) : setTeam(ne[0]); continue;
+    }
+    if(/games/i.test(ne[1])){ if(!/^player/i.test(ne[0])) setTeam(ne[0]); continue }
+    if(ne.length>=7 && cur && tm){
+      const v=ne.slice(1,8).map(x=>parseFloat(x.replace("*","")));
+      if(v.slice(0,6).some(isNaN)) continue;
+      const p={name:ne[0],team:tm}; COLS.forEach((k,i)=>{ if(!isNaN(v[i])) p[k]=v[i] });
+      cur.players.push(p);
+    }
+  }
+  return out.filter(s=>s.players.length);
+}
+
+async function getYear(y){
+  if(cache[y]) return cache[y];
+  let text, saved=false;
+  try{
+    const res=await fetch(encodeURI(YEARS[y])+"?t="+Date.now());
+    if(!res.ok) throw 0;
+    text=await res.text();
+    if(!/games/i.test(text)) throw 0;
+  }catch(e){ text=EMBEDDED[y]; saved=true }
+  return cache[y]={sections:parseSections(parseCSV(text)),saved};
+}
+
+async function buildAllTime(){
+  const agg=new Map();
+  for(const y of Object.keys(YEARS).sort()){
+    const d=await getYear(y); if(d.saved) usedSaved=true;
+    const sec=d.sections.find(s=>/regular/i.test(s.title)); if(!sec) continue;
+    for(const p of sec.players){
+      if(!p.GP) continue;
+      const name=p.name.replace(/\s*\(sub\)/i,"").replace(/\s+/g," ").trim(), key=name.toLowerCase();
+      const a=agg.get(key)||{name,team:p.team,GP:0,sums:{},mSum:0,mGP:0,seasons:new Set()};
+      a.GP+=p.GP; a.team=p.team; a.seasons.add(y);
+      AVG.forEach(k=>a.sums[k]=(a.sums[k]||0)+p[k]*p.GP);
+      if(p.MPG!=null){a.mSum+=p.MPG*p.GP; a.mGP+=p.GP}
+      agg.set(key,a);
+    }
+  }
+  const players=[...agg.values()].map(a=>{
+    const p={name:a.name,team:a.team,GP:a.GP,Seasons:a.seasons.size};
+    AVG.forEach(k=>p[k]=a.sums[k]/a.GP);
+    if(a.mGP) p.MPG=a.mSum/a.mGP;
+    return p;
+  });
+  return [{title:"Career, regular seasons",players}];
+}
+
+const teamClass = n => /south/i.test(n)?"south":/east/i.test(n)?"east":/west/i.test(n)?"west":/north/i.test(n)?"north":"";
+const fmt = (k,v) => v==null?"–":(k==="GP"||k==="Seasons")?v:(Math.round(v*10)/10).toFixed(1);
+const esc = s => s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderYears(){
+  const items=[...Object.keys(YEARS),"all"];
+  $("years").innerHTML=items.map(y=>`<button type="button" data-y="${y}" aria-pressed="${y===year}">${y==="all"?"All-time":y}</button>`).join("");
+  $("years").querySelectorAll("button").forEach(b=>b.onclick=()=>{year=b.dataset.y; renderYears(); show()});
+}
+
+function renderTabs(){
+  $("tabs").innerHTML = sections.length<2 ? "" : sections.map((s,i)=>`<button type="button" data-i="${i}" aria-pressed="${i===active}">${esc(s.title)}</button>`).join("");
+  $("tabs").querySelectorAll("button").forEach(b=>b.onclick=()=>{active=+b.dataset.i; team="all"; q=""; renderTabs(); renderMain()});
+}
+
+function leaderCard([k,label],pool){
+  const list=pool.filter(p=>p.GP>=minGP).sort((a,b)=>b[k]-a[k]).slice(0,5);
+  if(!list.length) return "";
+  const [f,...rest]=list;
+  return `<div class="card"><h3>${label} per game</h3>
+  <div class="top"><span class="big">${fmt(k,f[k])}</span><div><b>${esc(f.name)}</b><small><i class="dot ${teamClass(f.team)}"></i>${esc(f.team)} · ${f.GP} GP</small></div></div>
+  <ol>${rest.map(p=>`<li><span><i class="dot ${teamClass(p.team)}"></i>${esc(p.name)}</span><span>${fmt(k,p[k])}</span></li>`).join("")}</ol></div>`;
+}
+
+function renderMain(){
+  const s=sections[active], pool=s.players.filter(p=>p.GP>0);
+  const teams=[...new Set(pool.map(p=>p.team))];
+  const maxGP=Math.max(...pool.map(p=>p.GP));
+  const mins=[1,2,3,5,8,12,20].filter(n=>n<=maxGP);
+  if(!mins.includes(minGP)) minGP=1;
+  $("main").innerHTML=`
+  <h2>League leaders</h2>
+  <div class="controls"><label>Minimum games played
+    <select id="min">${mins.map(n=>`<option value="${n}" ${n===minGP?"selected":""}>${n}+</option>`).join("")}</select></label></div>
+  <div class="leaders">${LEADER_STATS.map(l=>leaderCard(l,pool)).join("")}</div>
+  <h2>All players</h2>
+  <div class="controls">
+    <label>${year==="all"?"Most recent team":"Team"}<select id="team"><option value="all">All teams</option>${teams.map(t=>`<option ${t===team?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
+    <label>Find a player<input type="search" id="q" value="${esc(q)}" placeholder="Type a name"></label>
+  </div>
+  <div class="scroll"><table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table></div>
+  <p class="note">Players with no games played are hidden. Select a column heading to sort.${year==="all"?" Career averages are weighted by games played across all regular seasons. Players are matched by name, so a name spelled differently in different years counts as two players.":""}</p>`;
+  $("min").onchange=e=>{minGP=+e.target.value; renderMain()};
+  $("team").onchange=e=>{team=e.target.value; renderTable()};
+  $("q").oninput=e=>{q=e.target.value; renderTable()};
+  renderTable();
+}
+
+function renderTable(){
+  const s=sections[active];
+  const cols=COLS.filter(c=>c!=="MPG"||s.players.some(p=>p.MPG!=null));
+  if(year==="all") cols.splice(1,0,"Seasons");
+  if(!["name","team",...cols].includes(sortKey)) sortKey="PPG";
+  const rows=s.players.filter(p=>p.GP>0 && (team==="all"||p.team===team) && p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  rows.sort((a,b)=> sortKey==="name"||sortKey==="team" ? a[sortKey].localeCompare(b[sortKey])*sortDir : ((a[sortKey]??-1)-(b[sortKey]??-1))*sortDir);
+  const heads=[["name","Player"],["team",year==="all"?"Latest team":"Team"],...cols.map(c=>[c,c])];
+  $("head").innerHTML=heads.map(([k,l])=>`<th scope="col" data-k="${k}" tabindex="0" ${k===sortKey?`aria-sort="${sortDir<0?"descending":"ascending"}"`:""}>${l}${k===sortKey?(sortDir<0?" ▼":" ▲"):""}</th>`).join("");
+  $("head").querySelectorAll("th").forEach(th=>{
+    const go=()=>{const k=th.dataset.k; if(k===sortKey) sortDir*=-1; else {sortKey=k; sortDir=(k==="name"||k==="team")?1:-1} renderTable()};
+    th.onclick=go; th.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}};
+  });
+  $("body").innerHTML=rows.length?rows.map(p=>`<tr><td>${esc(p.name)}</td><td><i class="dot ${teamClass(p.team)}"></i>${esc(p.team)}</td>${cols.map(c=>`<td>${fmt(c,p[c])}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${heads.length}">No players match. Clear the search or pick another team.</td></tr>`;
+}
+
+async function show(){
+  $("status").textContent="Loading stats…"; $("main").innerHTML=""; team="all"; q=""; minGP=1; usedSaved=false;
+  if(year==="all"){ sections=await buildAllTime() }
+  else { const d=await getYear(year); sections=d.sections; usedSaved=d.saved }
+  if(!sections.length||!sections[0].players.length){
+    $("tabs").innerHTML=""; $("status").textContent="No stats found";
+    $("main").innerHTML=`<p class="msg">No player stats were found for this season.</p>`; return;
+  }
+  active=Math.max(0,sections.findIndex(s=>/regular/i.test(s.title)));
+  $("status").textContent=(year==="all"?"All seasons":year+" season")+(usedSaved?" · showing saved copy":"");
+  renderTabs(); renderMain();
+}
+
+renderYears(); show();
+</script>
+</body>
+</html>
